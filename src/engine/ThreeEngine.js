@@ -2,6 +2,8 @@ import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Planet } from './Planet.js';
+import { Player } from './Player.js';
+import { AirshipController } from './AirshipController.js';
 
 
 export class ThreeEngine {
@@ -22,7 +24,8 @@ export class ThreeEngine {
         this.scene.background = skyTex;
 
         this.camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-        this.camera.position.z = 3;
+        this.camera.position.set(0, 15, 10);
+        this.clock = new THREE.Clock();
 
         // Cube with NodeMaterial
         const geometry = new THREE.BoxGeometry(10, 10, 10);
@@ -34,6 +37,16 @@ export class ThreeEngine {
 
         this.cube = new THREE.Mesh(geometry, this.material);
         // this.scene.add(this.cube); // Center cube removed
+
+        // Player & Controller setup
+        this.player = new Player(this.scene);
+        this.player.position.set(0, 10, 0); // Start high
+
+        this.controller = new AirshipController(this.player, this.camera, {
+            onPositionUpdate: (pos) => {
+                // Keep the planet centered on the player (optional logic)
+            }
+        });
 
         // Planet integration
         this.planet = new Planet(this.scene);
@@ -66,17 +79,21 @@ export class ThreeEngine {
 
     animate() {
         if (!this.isInitialized) return;
+        const delta = this.clock ? this.clock.getDelta() : 0.016;
         this.animationId = requestAnimationFrame(() => this.animate());
 
         // Independent animation loop
         if (this.controls && this.controls.enabled) {
             this.controls.update();
         } else {
-            this.cube.rotation.x += 0.01;
-            this.cube.rotation.y += 0.01;
+            // Update controller when NOT in debug/orbit mode
+            if (this.controller) {
+                this.controller.update(delta);
+            }
         }
 
         if (this.planet) {
+            // Terrain follows camera position
             this.planet.uniforms.uCameraPosition.value.copy(this.camera.position);
             this.renderer.compute(this.planet.computeUpdate);
         }
