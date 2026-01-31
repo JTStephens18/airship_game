@@ -35,13 +35,36 @@ export class Planet {
             heightScale: uniform(35),
             heightOffset: uniform(0.09),
             waterFloor: uniform(-2.0),
+
+            // Grid Following & Curvature
+            uSegmentSize: uniform(this.planeWidth / this.planeWidthSegments),
+            uCameraPosition: uniform(new THREE.Vector3()),
+
+            // Material transitions
+            uSandStart: uniform(-1.0),
+            uSandEnd: uniform(1.5),
+            uGrassStart: uniform(1.5),
+            uGrassEnd: uniform(3.0),
+            uHorizonDist: uniform(116),
+            uHorizonCurve: uniform(0.06),
+
+            // Material transitions
+            uSandStart: uniform(-1.0),
+            uSandEnd: uniform(1.5),
+            uGrassStart: uniform(1.5),
+            uGrassEnd: uniform(3.0),
+            uRockStart: uniform(6.0),
+            uRockEnd: uniform(8.0),
+
+            // Fog
+            uFogColor: uniform(color('#aec7ff')),
+            uFogNear: uniform(80),
+            uFogFar: uniform(150),
         };
     }
 
     setupTextures() {
         const loader = new THREE.TextureLoader();
-
-        // Assuming assets are available at this path
         const assetPath = '/src/assets/';
 
         this.textures = {
@@ -51,7 +74,6 @@ export class Planet {
             rock: loader.load(`${assetPath}rock.jpg`),
         };
 
-        // Configure textures
         Object.values(this.textures).forEach(tex => {
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.RepeatWrapping;
@@ -61,13 +83,22 @@ export class Planet {
     }
 
     setupGeometry() {
-        this.geometry = new THREE.PlaneGeometry(
+        const tempGeom = new THREE.PlaneGeometry(
             this.planeWidth,
             this.planeHeight,
             this.planeWidthSegments,
             this.planeHeightSegments
         );
-        this.geometry.rotateX(-Math.PI / 2); // Lay flat on XZ plane
+        tempGeom.rotateX(-Math.PI / 2);
+
+        const initialData = tempGeom.attributes.position.array;
+
+        // Storage attributes for compute
+        this.positionStorageAttribute = new THREE.StorageBufferAttribute(initialData, 3);
+        this.baseStorageAttribute = new THREE.StorageBufferAttribute(new Float32Array(initialData), 3);
+
+        this.geometry = tempGeom;
+        // We will use vertexIndex to read from storage buffer in material
     }
 
     setupMaterials() {
@@ -86,14 +117,22 @@ export class Planet {
             return total;
         });
 
-        this.material = new THREE.MeshStandardNodeMaterial();
+        const positionBuffer = storage(this.positionStorageAttribute, 'vec3', this.count);
+        const baseBuffer = storage(this.baseStorageAttribute, 'vec3', this.count);
 
-        // Displacement logic in positionNode
-        this.material.positionNode = Fn(() => {
-            const pos = positionLocal.toVar();
+        this.computeUpdate = Fn(() => {
+            const index = instanceIndex;
+            const localPos = baseBuffer.element(index);
 
+            // Snapping logic
+            const snapX = this.uniforms.uCameraPosition.x.div(this.uniforms.uSegmentSize).floor().mul(this.uniforms.uSegmentSize);
+            const snapZ = this.uniforms.uCameraPosition.z.div(this.uniforms.uSegmentSize).floor().mul(this.uniforms.uSegmentSize);
+            const worldOffset = vec3(snapX, 0.0, snapZ);
+            const worldPos = localPos.add(worldOffset);
+
+            // Noise sampling at fixed world position
             const noiseValue = fbm(
-                pos,
+                worldPos,
                 this.uniforms.octaves,
                 this.uniforms.frequency,
                 this.uniforms.amplitude,
@@ -102,16 +141,34 @@ export class Planet {
             );
 
             const rawHeight = noiseValue.add(this.uniforms.heightOffset).mul(this.uniforms.heightScale);
-            const finalHeight = max(rawHeight, this.uniforms.waterFloor);
 
-            pos.y.assign(finalHeight);
-            return pos;
+            // Horizon curvature
+            const distToCam = worldPos.xz.sub(this.uniforms.uCameraPosition.xz).length();
+            const normalizedDist = distToCam.div(this.uniforms.uHorizonDist);
+            const drop = normalizedDist.pow(4.0).mul(this.uniforms.uHorizonCurve).mul(100.0);
+
+            const curvedHeight = rawHeight.sub(drop);
+            const curvedWaterFloor = this.uniforms.waterFloor.sub(drop);
+            const finalHeight = max(curvedHeight, curvedWaterFloor);
+
+            const finalPos = vec3(worldPos.x, finalHeight, worldPos.z);
+            positionBuffer.element(index).assign(finalPos);
+        })().compute(this.count);
+
+        this.material = new THREE.MeshStandardNodeMaterial();
+
+        this.material.positionNode = Fn(() => {
+            return positionBuffer.element(vertexIndex);
         })();
 
-        // Color logic based on height and textures
         this.material.colorNode = Fn(() => {
-            const h = positionLocal.y;
             const pos = positionWorld;
+            const dist = pos.xz.sub(this.uniforms.uCameraPosition.xz).length();
+
+            // Re-calculate visual height for texturing (inverse of drop)
+            const normalizedDist = dist.div(this.uniforms.uHorizonDist);
+            const drop = normalizedDist.pow(4.0).mul(this.uniforms.uHorizonCurve).mul(100.0);
+            const h = pos.y.add(drop);
 
             const worldUV = pos.xz.mul(0.25);
             const waterWorldUV = pos.xz.mul(1.0);
@@ -122,15 +179,12 @@ export class Planet {
             const tRock = texture(this.textures.rock, worldUV);
 
             let finalColor = tWater;
+            finalColor = mix(finalColor, tSand, smoothstep(this.uniforms.uSandStart, this.uniforms.uSandEnd, h));
+            finalColor = mix(finalColor, tGrass, smoothstep(this.uniforms.uGrassStart, this.uniforms.uGrassEnd, h));
+            finalColor = mix(finalColor, tRock, smoothstep(this.uniforms.uRockStart, this.uniforms.uRockEnd, h));
 
-            const sandMix = smoothstep(-2.0, 1.5, h);
-            finalColor = mix(finalColor, tSand, sandMix);
-
-            const grassMix = smoothstep(1.5, 3.0, h);
-            finalColor = mix(finalColor, tGrass, grassMix);
-
-            const rockMix = smoothstep(6.0, 8.0, h);
-            finalColor = mix(finalColor, tRock, rockMix);
+            const fogFactor = smoothstep(this.uniforms.uFogNear, this.uniforms.uFogFar, dist);
+            finalColor = mix(finalColor, this.uniforms.uFogColor, fogFactor);
 
             return vec4(finalColor.rgb, 1.0);
         })();
@@ -153,6 +207,19 @@ export class Planet {
         if (params.heightScale !== undefined) this.uniforms.heightScale.value = params.heightScale;
         if (params.heightOffset !== undefined) this.uniforms.heightOffset.value = params.heightOffset;
         if (params.waterFloor !== undefined) this.uniforms.waterFloor.value = params.waterFloor;
+
+        if (params.horizonDistance !== undefined) this.uniforms.uHorizonDist.value = params.horizonDistance;
+        if (params.horizonCurve !== undefined) this.uniforms.uHorizonCurve.value = params.horizonCurve;
+        if (params.fogNear !== undefined) this.uniforms.uFogNear.value = params.fogNear;
+        if (params.fogFar !== undefined) this.uniforms.uFogFar.value = params.fogFar;
+        if (params.fogColor !== undefined) this.uniforms.uFogColor.value.set(params.fogColor);
+
+        if (params.sandStart !== undefined) this.uniforms.uSandStart.value = params.sandStart;
+        if (params.sandEnd !== undefined) this.uniforms.uSandEnd.value = params.sandEnd;
+        if (params.grassStart !== undefined) this.uniforms.uGrassStart.value = params.grassStart;
+        if (params.grassEnd !== undefined) this.uniforms.uGrassEnd.value = params.grassEnd;
+        if (params.rockStart !== undefined) this.uniforms.uRockStart.value = params.rockStart;
+        if (params.rockEnd !== undefined) this.uniforms.uRockEnd.value = params.rockEnd;
     }
 
     dispose() {

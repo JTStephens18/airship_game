@@ -25,7 +25,7 @@ export class ThreeEngine {
         this.camera.position.z = 3;
 
         // Cube with NodeMaterial
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const geometry = new THREE.BoxGeometry(10, 10, 10);
         this.material = new THREE.MeshStandardNodeMaterial();
 
         // Reactive uniform for color
@@ -33,7 +33,7 @@ export class ThreeEngine {
         this.material.colorNode = this.colorUniform;
 
         this.cube = new THREE.Mesh(geometry, this.material);
-        // this.scene.add(this.cube); // Remove or comment out the initial cube
+        // this.scene.add(this.cube); // Center cube removed
 
         // Planet integration
         this.planet = new Planet(this.scene);
@@ -74,6 +74,11 @@ export class ThreeEngine {
         } else {
             this.cube.rotation.x += 0.01;
             this.cube.rotation.y += 0.01;
+        }
+
+        if (this.planet) {
+            this.planet.uniforms.uCameraPosition.value.copy(this.camera.position);
+            this.renderer.compute(this.planet.computeUpdate);
         }
 
         this.renderer.render(this.scene, this.camera);
