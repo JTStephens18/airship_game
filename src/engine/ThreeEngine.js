@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Planet } from './Planet.js';
 import { Player } from './Player.js';
 import { AirshipController } from './AirshipController.js';
+import { EnemyManager } from './EnemyManager.js';
+import { GameState } from './GameState.js';
 
 
 export class ThreeEngine {
@@ -51,6 +53,24 @@ export class ThreeEngine {
         // Planet integration
         this.planet = new Planet(this.scene);
 
+        // Enemy system
+        this.enemyManager = new EnemyManager(this.scene);
+        this.gameState = new GameState({
+            onHealthChange: (health, max) => {
+                if (this.onHealthChange) this.onHealthChange(health, max);
+            },
+            onScoreChange: (score) => {
+                if (this.onScoreChange) this.onScoreChange(score);
+            },
+            onGameOver: (score) => {
+                if (this.onGameOver) this.onGameOver(score);
+                this.enemyManager.isActive = false;
+            }
+        });
+
+        // Damage cooldown to prevent instant death
+        this.damageCooldown = 0;
+
         // Lighting
         this.directionalLight = new THREE.DirectionalLight(0xffffff, 2);
         this.directionalLight.position.set(2, 2, 2);
@@ -97,6 +117,36 @@ export class ThreeEngine {
             // Update controller when NOT in debug/orbit mode
             if (this.controller) {
                 this.controller.update(delta);
+            }
+        }
+
+        // Enemy system updates
+        if (this.enemyManager && !this.gameState.isGameOver) {
+            this.enemyManager.update(delta, this.player.position, this.gameState);
+
+            const enemies = this.enemyManager.getEnemies();
+
+            // Anchor collision detection
+            if (this.controller && this.controller.anchor) {
+                const hits = this.controller.anchor.checkCollisions(enemies);
+                for (const enemy of hits) {
+                    const killed = enemy.takeDamage(1);
+                    if (killed) {
+                        this.gameState.addScore(100);
+                    }
+                }
+            }
+
+            // Player collision (ram damage)
+            this.damageCooldown = Math.max(0, this.damageCooldown - delta);
+            if (this.damageCooldown <= 0) {
+                for (const enemy of enemies) {
+                    if (enemy.checkCollision(this.player.position, 0.3)) {
+                        this.gameState.takeDamage(enemy.damage);
+                        this.damageCooldown = 1.0; // 1 second invulnerability
+                        break;
+                    }
+                }
             }
         }
 
@@ -150,6 +200,19 @@ export class ThreeEngine {
         }
     }
 
+    restart() {
+        // Reset game state
+        this.gameState.reset();
+        this.enemyManager.reset();
+        this.damageCooldown = 0;
+
+        // Reset player position
+        this.player.position.set(0, 10, 0);
+
+        // Reset camera
+        this.camera.position.set(0, 15, 10);
+    }
+
     dispose() {
         this.isInitialized = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
@@ -160,6 +223,7 @@ export class ThreeEngine {
         this.cube.geometry.dispose();
         this.cube.material.dispose();
         if (this.planet) this.planet.dispose();
+        if (this.enemyManager) this.enemyManager.dispose();
         if (this.controls) this.controls.dispose();
         this.renderer.dispose();
 

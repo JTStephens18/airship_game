@@ -153,6 +153,29 @@ export class Anchor {
         }
     }
 
+    /**
+     * Check for collisions with enemies
+     * Returns array of hit enemies
+     */
+    checkCollisions(enemies) {
+        const hits = [];
+        const speed = this.velocity.length();
+
+        // Increase hit radius based on velocity for better feedback
+        const hitRadius = this.anchorRadius + Math.min(speed * 0.1, 0.5);
+
+        for (const enemy of enemies) {
+            if (enemy.isDead) continue;
+
+            const distance = this.position.distanceTo(enemy.position);
+            if (distance < hitRadius + enemy.collisionRadius) {
+                hits.push(enemy);
+            }
+        }
+
+        return hits;
+    }
+
     dispose() {
         this.mesh.geometry.dispose();
         this.mesh.material.dispose();

@@ -51,3 +51,104 @@ body {
   opacity: 0.7;
   font-size: 0.9rem;
 }
+
+/* HUD Styles */
+.hud {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+}
+
+.health-bar-container {
+  width: 200px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #00ffff;
+  position: relative;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+.health-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff3333, #ff6666);
+  transition: width 0.2s ease-out;
+}
+
+.health-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 4px black;
+}
+
+.score {
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
+  color: #ffcc00;
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.5);
+}
+
+/* Game Over Overlay */
+.game-over-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.game-over-content {
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.game-over-content h1 {
+  font-size: 4rem;
+  color: #ff3333;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
+  margin: 0 0 1rem 0;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2em;
+}
+
+.final-score {
+  font-size: 1.5rem;
+  color: #ffcc00;
+  margin-bottom: 2rem;
+}
+
+.restart-button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-family: 'Courier New', monospace;
+  background: transparent;
+  border: 2px solid #00ffff;
+  color: #00ffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.restart-button:hover {
+  background: #00ffff;
+  color: black;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
