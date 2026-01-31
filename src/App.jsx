@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useControls } from 'leva';
+import { useControls, folder } from 'leva';
 import { ThreeEngine } from './engine/ThreeEngine';
 import './App.css';
 
@@ -8,9 +8,22 @@ function App() {
   const engineRef = useRef(null);
 
   const controls = useControls({
-    scale: { value: 1.5, min: 0.5, max: 3, step: 0.1 },
-    color: '#00ff00',
-    lightIntensity: { value: 2, min: 0, max: 10, step: 0.1 },
+    debug: false,
+    Planet: folder({
+      octaves: { value: 2, min: 1, max: 12, step: 1 },
+      frequency: { value: 0.06, min: 0.001, max: 0.5, step: 0.001 },
+      amplitude: { value: 0.2, min: 0.1, max: 5.0, step: 0.1 },
+      lacunarity: { value: 1.6, min: 1.0, max: 4.0, step: 0.1 },
+      persistence: { value: 0.90, min: 0.1, max: 1.0, step: 0.05 },
+      heightScale: { value: 35, min: 1, max: 100, step: 1 },
+      heightOffset: { value: 0.09, min: -1.0, max: 1.0, step: 0.01 },
+      waterFloor: { value: -2.0, min: -20, max: 0, step: 0.1 },
+    }),
+    Cube: folder({
+      scale: { value: 1.5, min: 0.5, max: 3, step: 0.1 },
+      color: '#00ff00',
+      lightIntensity: { value: 2, min: 0, max: 10, step: 0.1 },
+    })
   });
 
   useEffect(() => {
@@ -36,10 +49,6 @@ function App() {
   return (
     <div className="app-container">
       <div ref={containerRef} className="canvas-container" />
-      <div className="ui-overlay">
-        <h1>Three.js + React (Vanilla Engine)</h1>
-        <p>Managed by React, Rendered by Three.js Shading Language</p>
-      </div>
     </div>
   );
 }
