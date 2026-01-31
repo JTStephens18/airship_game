@@ -64,7 +64,15 @@ export class ThreeEngine {
         this.controls.enabled = false; // Disabled by default
 
         this.onResize = this.onResize.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+
         window.addEventListener('resize', this.onResize);
+        window.addEventListener('mousemove', this.onMouseMove);
+
+        // Plane for mouse raycasting
+        this.mousePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -10);
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
 
         this.isInitialized = false;
         this.init();
@@ -128,10 +136,25 @@ export class ThreeEngine {
         this.renderer.setSize(width, height);
     }
 
+    onMouseMove(event) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        if (this.controller && this.camera) {
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const target = new THREE.Vector3();
+            // Raycast against the plane at ship height (approx)
+            if (this.raycaster.ray.intersectPlane(this.mousePlane, target)) {
+                this.controller.updateMouse(target);
+            }
+        }
+    }
+
     dispose() {
         this.isInitialized = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
         window.removeEventListener('resize', this.onResize);
+        window.removeEventListener('mousemove', this.onMouseMove);
 
         // Cleanup resources
         this.cube.geometry.dispose();
