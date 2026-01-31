@@ -29,6 +29,265 @@
 
 ---
 
+# airship game Game Design Document
+## Aerial Roguelike Adventure
+
+---
+
+### 📋 Executive Summary
+**airship game** is a stylized aerial roguelike set in a procedurally generated world with PS1/retro aesthetics. Players pilot a hovercraft-style airship equipped with a chain-attached wrecking ball anchor, navigating an infinite procedural landscape while engaging in momentum-based combat.
+
+The game blends exploration, resource management, and physics-based combat into compelling minute-to-minute gameplay loops with long-term progression.
+
+---
+
+### 🎮 Core Pillars
+
+| Pillar | Description |
+| :--- | :--- |
+| **Momentum-Based Combat** | The swinging anchor is the primary weapon—skill comes from positioning and timing |
+| **Atmospheric Exploration** | Retro-styled procedural worlds with dithered visuals and CRT effects create a nostalgic, dreamlike feel |
+| **Roguelike Tension** | Each run is high-stakes with permanent death, but meta-progression unlocks new capabilities |
+| **Verticality** | Height management (ascend/descend) creates tactical depth in combat and exploration |
+
+---
+
+### 🔁 Gameplay Loops
+
+#### **Micro Loop (30 seconds - 2 minutes)**
+**Core Actions:**
+* **Navigate** terrain using W/S (thrust) and A/D (rotation)
+* **Swing anchor** (Spacebar) to attack enemies or destroy obstacles
+* **Adjust altitude** with Q/E to dodge, gain tactical advantage, or collect aerial resources
+* **Collect loot** dropped by defeated enemies
+
+#### **Session Loop (10-30 minutes per run)**
+**Key Decisions:**
+* Risk vs. reward when health is low
+* Which upgrades to prioritize
+* When to push forward vs. when to consolidate
+
+#### **Meta Loop (Multiple sessions)**
+**Progression Systems:**
+* **Ship Unlocks:** Different airships with unique anchor mechanics
+* **Permanent Upgrades:** Slight buffs that persist between runs
+* **Biome Unlocks:** New procedural terrain types with unique enemies
+* **Bestiary/Codex:** Collectible lore about the world
+
+---
+
+### ⚙️ Core Mechanics
+
+#### 1. Airship Movement
+| Control | Action | Current Implementation |
+| :--- | :--- | :--- |
+| **W/S** | Forward/Backward thrust | ✅ AirshipController.jsx |
+| **A/D** | Rotate left/right | ✅ AirshipController.jsx |
+| **Shift** | Sprint (2x speed) | ✅ AirshipController.jsx |
+| **Q/E** | Descend/Ascend | ✅ AirshipController.jsx |
+| **Space** | Reel in anchor (lasso) | ✅ Chain length control |
+
+**Design Notes:**
+* Current implementation uses tank-style controls with inertia
+* Height is clamped between `minHeight` (3) and `maxHeight` (20)
+* Visual bobbing creates a floating, dreamlike feel
+
+**Potential Enhancements:**
+* **Fuel System:** Movement consumes fuel, creating resource tension. Sprint drains faster.
+* **Drift Mechanics:** Holding A/D while moving could enable powerslide-style drifting
+* **Boost Pads:** Terrain features that accelerate the ship
+
+#### 2. Anchor Combat System
+The anchor is a **physics-based melee weapon** that swings from the airship.
+
+| Property | Current Value | Purpose |
+| :--- | :--- | :--- |
+| **Chain Length** | 2-12 units | Reel in (Space) or auto-extend |
+| **Anchor Mass** | 5 | Affects swing momentum |
+| **Spring Stiffness** | 80 | How tight the chain feels |
+| **Gravity Strength** | 20 | How fast anchor falls |
+| **Trail Length** | 6 | Ghost trail for visual feedback |
+
+**Combat Flow:**
+1. **Position** - Fly toward enemies at optimal angle
+2. **Wind Up** - Use rotation (A/D) to build swing momentum
+3. **Strike** - Time the rotation to hit enemies with maximum velocity
+4. **Follow Through** - The anchor continues its arc, potentially hitting multiple targets
+
+**Proposed Enhancements:**
+* **Charged Strike:** Hold Space to reel in, release for a powerful whip attack (Medium complexity)
+* **Deflection:** Anchor can deflect enemy projectiles (Low complexity)
+* **Grapple:** Hook onto terrain features or large enemies (High complexity)
+* **Elemental Anchors:** Fire/Ice/Lightning variants with status effects (Medium complexity)
+* **Momentum Meter:** Visual indicator of current anchor velocity/damage (Low complexity)
+
+---
+
+### 🗺️ Procedural Terrain
+The `Planet.jsx` system generates infinite terrain using **FBM (Fractal Brownian Motion)** noise.
+
+**Current Features:**
+* Height-based biome coloring (water → sand → grass → rock)
+* Horizon curvature for world-ending effect
+* PS1-style dithering and texture filtering
+* Fog system for depth
+
+**Gameplay Integration Ideas:**
+* **Deep Water:** Ship moves slower, anchor sinks faster
+* **Mountain Peaks:** Hide treasure, require altitude navigation
+* **Canyons:** Tight corridors for chase sequences
+* **Floating Islands:** Rare high-altitude zones with special loot
+* **Ruins:** Points of interest with guaranteed encounters
+
+---
+
+### 👾 Enemy Design Framework
+
+#### **Tier 1: Common Enemies**
+* **Drifter:** Floats toward player slowly, rams on contact. Weakness: Slow speed.
+* **Spitter:** Stays at range, fires slow projectiles. Weakness: Stationary when firing.
+* **Swarm Bug:** Groups of 3-5 tiny enemies that circle. Weakness: Low HP.
+
+#### **Tier 2: Elite Enemies**
+* **Bomber:** High altitude, drops explosive charges. Weakness: Must fly up to engage.
+* **Shield Bearer:** Frontal shield, vulnerable from behind. Weakness: Requires positioning.
+* **Tracker:** Fast, predicts player movement. Weakness: Sudden direction changes.
+
+#### **Tier 3: Boss Enemies**
+* **Sky Leviathan:** Massive serpent that weaves through terrain, destroyable segments.
+* **Storm Core:** Stationary core surrounded by rotating shields, phase-based fight.
+* **Mirror Ship:** Copies player movements delayed by 2 seconds.
+
+---
+
+### 🎁 Loot & Upgrade Systems
+
+#### **In-Run Upgrades (Roguelike)**
+* **Anchor Mods:** +25% chain length, +fire damage, increased mass
+* **Ship Mods:** +10% speed, reduced fuel consumption, faster turn
+* **Defensive:** Max HP+, shield charges, damage resistance
+* **Utility:** Radar range+, loot magnet, XP boost
+
+#### **Persistent Upgrades (Meta)**
+* **Reinforced Hull I-V:** Permanent +5% HP per level
+* **Engine Tuning I-V:** Permanent +3% base speed per level
+* **Anchor Smithing I-V:** Permanent +5% anchor damage per level
+* **Deep Pockets:** Start runs with bonus resources
+
+---
+
+### 🎨 Visual Identity
+**Current Aesthetic:**
+* Dithered textures via Bayer matrix shading
+* Wireframe geometry on player and anchor
+* Additive blending particles (Galaxy, Spiral components)
+* Low-poly terrain with visible vertices
+
+**Recommended Enhancements:**
+* **Screen shake:** Combat feedback
+* **Time freeze (hitstop):** Impactful anchor strikes
+* **Afterimage trails:** Already on anchor, could extend to ship
+* **Color grading:** Per-biome color palettes
+* **Pixelation pass:** Optional ultra-retro mode
+
+---
+
+### 📐 Camera System
+The current camera follows the player with smooth lerping (`AirshipController.jsx` lines 198-213).
+
+**Current Implementation:**
+* **Camera Offset:** [0, 5, 10] (behind and above)
+* **Smooth Factor:** exponential decay at rate 10
+* **Look Target:** Smoothly follows player position
+
+**Proposed Additions:**
+* **Combat Zoom:** Pull camera back when enemies nearby
+* **Lock-On:** Optional target lock that rotates camera
+* **Cinematic Mode:** Special camera for boss encounters
+* **Death Cam:** Slow-mo following the final blow
+
+---
+
+### 🔊 Audio Direction (Recommended)
+* **Music:** Synth-wave with ambient pads, dynamic layering based on combat intensity
+* **SFX - Anchor:** Metallic whoosh, satisfying crunch on hit
+* **SFX - Engine:** Low hum with pitch variation based on speed
+* **Ambient:** Wind, distant thunder, mysterious tones
+
+---
+
+### 📊 Technical Architecture
+
+| Layer | Technology |
+| :--- | :--- |
+| **Framework** | React + Vite |
+| **3D Engine** | Three.js (WebGPU renderer) |
+| **React Binding** | @react-three/fiber |
+| **Physics** | @react-three/rapier |
+| **UI Controls** | Leva |
+| **Shaders** | Three.js TSL (Shader Language) |
+
+**Recommended Additions:**
+* **Zustand:** Global state management (health, score, upgrades)
+* **Game Manager:** Central game state, difficulty scaling
+* **Object Pooling:** Bullet/enemy recycling for performance
+* **Save System:** LocalStorage for meta-progression
+* **Audio Engine:** Howler.js or Web Audio API
+
+---
+
+### 🗺️ Development Roadmap
+
+* **Phase 1: Core Combat (MVP)**
+    * [ ] Enemy spawning system (`EnemyManager`)
+    * [ ] Basic enemy AI (move toward player, ram attack)
+    * [ ] Anchor collision detection with enemies
+    * [ ] Player health system
+    * [ ] Death/restart flow
+
+* **Phase 2: Roguelike Foundation**
+    * [ ] Loot drops from enemies
+    * [ ] In-run upgrade shop/collection
+    * [ ] Score tracking
+    * [ ] Run end screen with stats
+
+* **Phase 3: World Building**
+    * [ ] Multiple biomes (snow mountains, lava lakes, crystal caves)
+    * [ ] Points of interest generation
+    * [ ] Boss encounters
+
+* **Phase 4: Meta Progression**
+    * [ ] Persistent currency
+    * [ ] Unlock tree for ships/upgrades
+    * [ ] Achievement system
+    * [ ] Leaderboards
+
+* **Phase 5: Polish**
+    * [ ] Juice effects (screen shake, hitstop, particles)
+    * [ ] Sound design
+    * [ ] Tutorial/onboarding
+    * [ ] Difficulty modes
+
+---
+
+### 🎯 Key Questions for Design Direction
+1. **Pacing:** Should runs be ~10 min sprints or ~30 min journeys?
+2. **Difficulty Curve:** Start hard (Binding of Isaac) or scale with progression (Hades)?
+3. **Story Integration:** Mystery to uncover, or pure arcade action?
+4. **Multiplayer Consideration:** Design with co-op potential, or strictly single-player?
+5. **Platform Targets:** Web-only, or eventual Steam/mobile ports?
+
+---
+
+### 📎 Reference Games
+* **Luftrausers:** Momentum-based aerial combat
+* **Hades:** Roguelike progression, juicy combat feel
+* **Risk of Rain 2:** 3D roguelike pacing and itemization
+* **Solar Ash:** Stylized movement and world traversal
+* **Flinthook:** Anchor/grapple hook as primary weapon
+
+---
+
 # TSL (Three.js Shading Language) Rules for AI
 
 ---
@@ -874,3 +1133,5 @@ When compute shader output needs to be rendered (e.g., simulations, procedural g
 | `gl_FragCoord` | `screenCoordinate` |
 | `gl_PointCoord` | `uv()` in SpriteNodeMaterial/PointsNodeMaterial |
 | `gl_InstanceID` | `instanceIndex` |
+
+
