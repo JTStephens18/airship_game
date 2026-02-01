@@ -4,7 +4,7 @@ import {
     storage, instanceIndex, vertexIndex, array, Fn,
     positionWorld, max, smoothstep, color, mix, Loop,
     positionLocal, positionGeometry, texture,
-    screenUV, screenSize
+    screenUV, screenSize, varying, select, saturate
 } from 'three/tsl';
 import { cnoise } from './components/perlin.js';
 
@@ -61,6 +61,13 @@ export class Planet {
             uFogColor: uniform(color('#aec7ff')),
             uFogNear: uniform(80),
             uFogFar: uniform(150),
+
+            // Shadow
+            uShadowPosition: uniform(new THREE.Vector3()),
+            uShadowRotation: uniform(0.0),
+            uShadowOffset: uniform(0.0),
+            uShadowRadius: uniform(4.0),
+            uShadowOpacity: uniform(0.5),
         };
     }
 
@@ -73,7 +80,11 @@ export class Planet {
             sand: loader.load(`${assetPath}dirt.png`),
             grass: loader.load(`${assetPath}grass1.png`),
             rock: loader.load(`${assetPath}rock.jpg`),
+            airshipShadow: loader.load(`${assetPath}airship_shadow_crop.png`),
         };
+
+        this.textures.airshipShadow.wrapS = THREE.ClampToEdgeWrapping;
+        this.textures.airshipShadow.wrapT = THREE.ClampToEdgeWrapping;
 
         Object.values(this.textures).forEach(tex => {
             tex.wrapS = THREE.RepeatWrapping;
@@ -223,9 +234,54 @@ export class Planet {
             finalColor = mix(finalColor, this.uniforms.uFogColor, fogFactor);
 
             const colorNum = float(16.0);
-            const retroColor = this.applyRetroEffects(finalColor, colorNum);
+            const retroColor = this.applyRetroEffects(finalColor, colorNum).toVar();
 
-            // return vec4(finalColor.rgb, 1.0);
+            // === SHADOW CALCULATION ===
+            const shadowWorldPos = positionWorld;
+
+            // 1. Center coordinates relative to shadow position
+            const relPos = shadowWorldPos.xz.sub(this.uniforms.uShadowPosition.xz).toVar();
+
+            // 2. Rotate coordinates by uShadowRotation to align with ship
+            // Removing negate() to fix inverted rotation
+            const angle = this.uniforms.uShadowRotation;
+            const s = angle.sin();
+            const c = angle.cos();
+            const rotatedX = relPos.x.mul(c).sub(relPos.y.mul(s));
+            const rotatedZ = relPos.x.mul(s).add(relPos.y.mul(c));
+
+            // 3. Texture-based Shadow
+            // Offset rotatedZ to move shadow forward/backward relative to ship
+            const rotatedPos = vec2(rotatedX, rotatedZ.add(this.uniforms.uShadowOffset));
+
+            // Re-calculate hShadow (flat height) for height distance
+            const distFromShip = shadowWorldPos.xz.sub(this.uniforms.uCameraPosition.xz).length();
+            const normDist = distFromShip.div(this.uniforms.uHorizonDist);
+            const sCurveDrop = normDist.pow(4.0).mul(this.uniforms.uHorizonCurve).mul(100.0);
+            const hShadow = shadowWorldPos.y.add(sCurveDrop);
+
+            const shipHeight = this.uniforms.uShadowPosition.y.sub(hShadow);
+
+            // Limit ship height to prevent division by zero or negative scale
+            const shadowScale = shipHeight.div(10.0).add(1.0).max(0.1);
+            const finalShadowSize = this.uniforms.uShadowRadius.mul(2.0).mul(shadowScale).max(0.1);
+
+            const shadowUV = rotatedPos.div(finalShadowSize).add(0.5);
+
+            // Bounds check to prevent repeating
+            const isInBounds = shadowUV.x.greaterThan(0.0).and(shadowUV.x.lessThan(1.0))
+                .and(shadowUV.y.greaterThan(0.0).and(shadowUV.y.lessThan(1.0)));
+
+            const shadowTex = texture(this.textures.airshipShadow, shadowUV);
+            const shadowAlpha = select(isInBounds, shadowTex.a, float(0.0));
+
+            // Fade shadow as airship gets higher
+            const heightFade = smoothstep(float(35.0), float(2.0), shipHeight);
+            const finalShadowFactor = saturate(shadowAlpha.mul(this.uniforms.uShadowOpacity).mul(heightFade));
+
+            // Apply shadow by darkening the retro color
+            retroColor.mulAssign(float(1.0).sub(finalShadowFactor));
+
             return vec4(retroColor.rgb, 1.0);
         })();
 
@@ -260,6 +316,10 @@ export class Planet {
         if (params.grassEnd !== undefined) this.uniforms.uGrassEnd.value = params.grassEnd;
         if (params.rockStart !== undefined) this.uniforms.uRockStart.value = params.rockStart;
         if (params.rockEnd !== undefined) this.uniforms.uRockEnd.value = params.rockEnd;
+
+        if (params.shadowRadius !== undefined) this.uniforms.uShadowRadius.value = params.shadowRadius;
+        if (params.shadowOpacity !== undefined) this.uniforms.uShadowOpacity.value = params.shadowOpacity;
+        if (params.shadowOffset !== undefined) this.uniforms.uShadowOffset.value = params.shadowOffset;
     }
 
     dispose() {

@@ -123,6 +123,13 @@ export class ThreeEngine {
         if (this.planet) {
             // Terrain follows camera position
             this.planet.uniforms.uCameraPosition.value.copy(this.camera.position);
+
+            // Update shadow position and rotation from player
+            if (this.player) {
+                this.planet.uniforms.uShadowPosition.value.copy(this.player.position);
+                this.planet.uniforms.uShadowRotation.value = this.player.rotation.y;
+            }
+
             this.renderer.compute(this.planet.computeUpdate);
         }
 

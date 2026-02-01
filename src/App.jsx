@@ -32,6 +32,9 @@ function App() {
       grassEnd: { value: 3.0, min: 0, max: 20, step: 0.1 },
       rockStart: { value: 6.0, min: 0, max: 30, step: 0.1 },
       rockEnd: { value: 8.0, min: 5, max: 50, step: 0.1 },
+      shadowRadius: { value: 3.0, min: 1.0, max: 20.0, step: 0.1 },
+      shadowOpacity: { value: 0.8, min: 0.0, max: 1.0, step: 0.05 },
+      shadowOffset: { value: 2.0, min: -2.0, max: 2.0, step: 0.05 },
     }),
     Cube: folder({
       scale: { value: 1.5, min: 0.5, max: 3, step: 0.1 },
