@@ -23,13 +23,11 @@ export class Player {
 
     loadModel() {
         const loader = new GLTFLoader();
-        // Asset is in src/assets/airship.glb, which Vite serves
         loader.load('/src/assets/airship.glb', (gltf) => {
             this.model = gltf.scene;
 
-            // Basic adjustments - increased scale for better visibility
+            // Adjust model (User bumped this to 3.0)
             this.model.scale.setScalar(3.0);
-            // Most models need to be rotated 180 or 90 to face forward (-Z)
             this.model.rotation.y = Math.PI;
 
             this.group.add(this.model);
@@ -47,8 +45,6 @@ export class Player {
     }
 
     update(bobOffset = 0) {
-        // Apply visual bobbing offset to the group
-        // If the model is loaded, we apply it to that, otherwise to the placeholder
         const visual = this.model || this.placeholder;
         if (visual) {
             visual.position.y = bobOffset;
