@@ -7,15 +7,15 @@ import { Fn, float, vec3, time, positionLocal, uniform, attribute, varying, sele
 export class SmokeTrail {
     constructor(scene, options = {}) {
         this.scene = scene;
-        this.maxParticles = options.maxParticles || 100;
-        this.particleLifetime = options.particleLifetime || 2.0;
+        this.maxParticles = options.maxParticles || 600;
+        this.particleLifetime = options.particleLifetime || 1.2;
         this.color = new THREE.Color(options.color || 0xcccccc);
-        this.size = options.size || 0.2;
+        this.size = options.size || 0.4;
 
-        this.init();
+        this.init(options);
     }
 
-    init() {
+    init(options = {}) {
         // 1. Geometry - small sphere for each smoke puff
         // Using InstancedBufferGeometry to ensure WebGPU knows to draw multiple instances
         const baseGeometry = new THREE.SphereGeometry(this.size, 8, 8);
@@ -43,6 +43,14 @@ export class SmokeTrail {
         this.velocityAttribute = new THREE.InstancedBufferAttribute(velocities, 3);
         geometry.setAttribute('spawnVel', this.velocityAttribute);
 
+        // d. Random Scale (for puffiness)
+        const randomScales = new Float32Array(this.maxParticles);
+        for (let i = 0; i < this.maxParticles; i++) {
+            randomScales[i] = 0.5 + Math.random() * 1.0;
+        }
+        this.randomScaleAttribute = new THREE.InstancedBufferAttribute(randomScales, 1);
+        geometry.setAttribute('randomScale', this.randomScaleAttribute);
+
         // 3. TSL Material
         const material = new THREE.MeshBasicNodeMaterial();
         material.transparent = true;
@@ -53,7 +61,9 @@ export class SmokeTrail {
         const aSpawnTime = attribute('spawnTime');
         const aSpawnPos = attribute('spawnPos');
         const aSpawnVel = attribute('spawnVel');
+        const aRandomScale = attribute('randomScale');
         const uLifetime = uniform(this.particleLifetime);
+        this.uSize = uniform(this.size);
 
         // Calculate age
         const age = time.sub(aSpawnTime);
@@ -62,8 +72,9 @@ export class SmokeTrail {
         // Position Logic: SpawnPos + (Vel * age) + gravity-ish drift
         const currentPos = aSpawnPos.add(aSpawnVel.mul(age)).add(vec3(0, age.mul(0.2), 0));
 
-        // Scale Logic: Starts small, grows slightly, then fades/shrunk
-        const particleScale = float(1.0).sub(normalizedAge).mul(select(aSpawnTime.lessThan(0), 0, 1));
+        // Scale Logic: Starts small, grows slightly, then fades/shrunken
+        // Multiply by randomScale for variation
+        const particleScale = this.uSize.mul(aRandomScale).mul(float(1.0).sub(normalizedAge)).mul(select(aSpawnTime.lessThan(0), 0, 1));
 
         // Apply to vertex stage
         material.positionNode = Fn(() => {
@@ -84,7 +95,19 @@ export class SmokeTrail {
 
         this.particleIndex = 0;
         this.lastSpawnTime = 0;
-        this.spawnRate = 0.05; // spawn every 50ms
+        this.spawnRate = options.spawnRate || 0.01; // spawn every 10ms
+    }
+
+    setSize(size) {
+        this.size = size;
+        // Note: Changing geometry size on the fly is expensive, 
+        // but we can use an attribute or scale node instead.
+        // For now, let's update the scaleNode in the material.
+        this.uSize.value = size;
+    }
+
+    setSpawnRate(rate) {
+        this.spawnRate = rate;
     }
 
     emit(worldPos, currentTime) {

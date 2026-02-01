@@ -23,15 +23,15 @@ export class Player {
 
         // Smoke trails setup
         this.smokeTrails = [
-            new SmokeTrail(this.scene, { color: 0x555555, size: 0.15 }),
-            new SmokeTrail(this.scene, { color: 0x555555, size: 0.15 })
+            new SmokeTrail(this.scene, { color: 0x555555, size: 0.4, spawnRate: 0.01 }),
+            new SmokeTrail(this.scene, { color: 0x555555, size: 0.4, spawnRate: 0.01 })
         ];
 
         // Default engine offsets (relative to ship center)
         // These will be overridden by Leva if provided
         this.engineOffsets = [
-            new THREE.Vector3(-0.65, -0.1, 0.8),
-            new THREE.Vector3(0.65, -0.1, 0.8)
+            new THREE.Vector3(-0.48, 0.46, 0.98),
+            new THREE.Vector3(0.48, 0.46, 0.98)
         ];
     }
 

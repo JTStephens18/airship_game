@@ -137,6 +137,13 @@ export class ThreeEngine {
         if (this.player && controls.engineOffsetX !== undefined) {
             this.player.engineOffsets[0].set(controls.engineOffsetX, controls.engineOffsetY, controls.engineOffsetZ);
             this.player.engineOffsets[1].set(-controls.engineOffsetX, controls.engineOffsetY, controls.engineOffsetZ);
+
+            if (controls.smokeSize !== undefined) {
+                this.player.smokeTrails.forEach(t => t.setSize(controls.smokeSize));
+            }
+            if (controls.spawnRate !== undefined) {
+                this.player.smokeTrails.forEach(t => t.setSpawnRate(controls.spawnRate));
+            }
         }
 
         if (this.cube) {

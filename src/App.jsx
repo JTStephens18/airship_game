@@ -42,6 +42,8 @@ function App() {
       engineOffsetX: { value: 0.48, min: 0, max: 2, step: 0.01 },
       engineOffsetY: { value: 0.46, min: -2, max: 2, step: 0.01 },
       engineOffsetZ: { value: 0.98, min: -5, max: 5, step: 0.01 },
+      smokeSize: { value: 0.2, min: 0.01, max: 2.0, step: 0.01 },
+      spawnRate: { value: 0.00, min: 0.001, max: 0.1, step: 0.001 },
     }),
   });
 
