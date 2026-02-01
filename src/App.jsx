@@ -38,6 +38,11 @@ function App() {
       color: '#00ff00',
       lightIntensity: { value: 2, min: 0, max: 10, step: 0.1 },
     }),
+    Engine: folder({
+      engineOffsetX: { value: 0.48, min: 0, max: 2, step: 0.01 },
+      engineOffsetY: { value: 0.46, min: -2, max: 2, step: 0.01 },
+      engineOffsetZ: { value: 0.98, min: -5, max: 5, step: 0.01 },
+    }),
   });
 
   useEffect(() => {

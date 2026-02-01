@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SmokeTrail } from './SmokeTrail.js';
 
 /**
  * Player class - handles the airship model and visual components
@@ -19,6 +20,19 @@ export class Player {
 
         // Load the actual airship model
         this.loadModel();
+
+        // Smoke trails setup
+        this.smokeTrails = [
+            new SmokeTrail(this.scene, { color: 0x555555, size: 0.15 }),
+            new SmokeTrail(this.scene, { color: 0x555555, size: 0.15 })
+        ];
+
+        // Default engine offsets (relative to ship center)
+        // These will be overridden by Leva if provided
+        this.engineOffsets = [
+            new THREE.Vector3(-0.65, -0.1, 0.8),
+            new THREE.Vector3(0.65, -0.1, 0.8)
+        ];
     }
 
     loadModel() {
@@ -44,10 +58,24 @@ export class Player {
         });
     }
 
-    update(bobOffset = 0) {
+    update(delta, time, bobOffset = 0) {
         const visual = this.model || this.placeholder;
         if (visual) {
             visual.position.y = bobOffset;
+        }
+
+        // Update smoke trails
+        if (this.smokeTrails) {
+            this.smokeTrails.forEach((trail, i) => {
+                const offset = this.engineOffsets[i].clone();
+                // Apply ship's rotation and position to the offset
+                const worldPos = offset.applyQuaternion(this.group.quaternion).add(this.group.position);
+                // Add the visual bobbing to smoke positions too if desired, 
+                // but usually engines stay with the ship
+                worldPos.y += bobOffset;
+
+                trail.emit(worldPos, time);
+            });
         }
     }
 
@@ -75,6 +103,9 @@ export class Player {
                     child.material.dispose();
                 }
             });
+        }
+        if (this.smokeTrails) {
+            this.smokeTrails.forEach(trail => trail.dispose());
         }
         this.scene.remove(this.group);
     }

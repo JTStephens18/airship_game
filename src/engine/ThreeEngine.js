@@ -111,6 +111,14 @@ export class ThreeEngine {
             }
         }
 
+        const totalTime = this.clock ? this.clock.elapsedTime : 0;
+
+        if (this.player) {
+            // Player bobbing is handled inside controller.update call to player.update, 
+            // but we need to pass time for particles
+            const bobAmount = Math.sin(totalTime * 3) * 0.1;
+            this.player.update(delta, totalTime, bobAmount);
+        }
 
         if (this.planet) {
             // Terrain follows camera position
@@ -124,6 +132,11 @@ export class ThreeEngine {
     updateControls(controls) {
         if (this.controls) {
             this.controls.enabled = controls.debug || false;
+        }
+
+        if (this.player && controls.engineOffsetX !== undefined) {
+            this.player.engineOffsets[0].set(controls.engineOffsetX, controls.engineOffsetY, controls.engineOffsetZ);
+            this.player.engineOffsets[1].set(-controls.engineOffsetX, controls.engineOffsetY, controls.engineOffsetZ);
         }
 
         if (this.cube) {

@@ -103,8 +103,8 @@ export class AirshipController {
 
         // === E. VISUAL BOBBING ===
         this.bobTime += delta;
-        const bobAmount = Math.sin(this.bobTime * 3) * 0.1;
-        this.player.update(bobAmount);
+        // Bobbing now handled in ThreeEngine for consistency with smoke trails
+        // this.player.update(bobAmount);
 
         // === D. CAMERA FOLLOW ===
         // Apply offset rotated by player rotation
