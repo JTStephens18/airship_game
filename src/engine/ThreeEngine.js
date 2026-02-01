@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Planet } from './Planet.js';
 import { Player } from './Player.js';
 import { AirshipController } from './AirshipController.js';
-import { EnemyManager } from './EnemyManager.js';
 import { GameState } from './GameState.js';
 
 
@@ -53,18 +52,9 @@ export class ThreeEngine {
         // Planet integration
         this.planet = new Planet(this.scene);
 
-        // Enemy system
-        this.enemyManager = new EnemyManager(this.scene);
         this.gameState = new GameState({
-            onHealthChange: (health, max) => {
-                if (this.onHealthChange) this.onHealthChange(health, max);
-            },
-            onScoreChange: (score) => {
-                if (this.onScoreChange) this.onScoreChange(score);
-            },
             onGameOver: (score) => {
                 if (this.onGameOver) this.onGameOver(score);
-                this.enemyManager.isActive = false;
             }
         });
 
@@ -120,35 +110,6 @@ export class ThreeEngine {
             }
         }
 
-        // Enemy system updates
-        if (this.enemyManager && !this.gameState.isGameOver) {
-            this.enemyManager.update(delta, this.player.position, this.gameState);
-
-            const enemies = this.enemyManager.getEnemies();
-
-            // Anchor collision detection
-            if (this.controller && this.controller.anchor) {
-                const hits = this.controller.anchor.checkCollisions(enemies);
-                for (const enemy of hits) {
-                    const killed = enemy.takeDamage(1);
-                    if (killed) {
-                        this.gameState.addScore(100);
-                    }
-                }
-            }
-
-            // Player collision (ram damage)
-            this.damageCooldown = Math.max(0, this.damageCooldown - delta);
-            if (this.damageCooldown <= 0) {
-                for (const enemy of enemies) {
-                    if (enemy.checkCollision(this.player.position, 0.3)) {
-                        this.gameState.takeDamage(enemy.damage);
-                        this.damageCooldown = 1.0; // 1 second invulnerability
-                        break;
-                    }
-                }
-            }
-        }
 
         if (this.planet) {
             // Terrain follows camera position
@@ -189,21 +150,11 @@ export class ThreeEngine {
     onMouseMove(event) {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        if (this.controller && this.camera) {
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-            const target = new THREE.Vector3();
-            // Raycast against the plane at ship height (approx)
-            if (this.raycaster.ray.intersectPlane(this.mousePlane, target)) {
-                this.controller.updateMouse(target);
-            }
-        }
     }
 
     restart() {
         // Reset game state
         this.gameState.reset();
-        this.enemyManager.reset();
         this.damageCooldown = 0;
 
         // Reset player position
@@ -223,7 +174,6 @@ export class ThreeEngine {
         this.cube.geometry.dispose();
         this.cube.material.dispose();
         if (this.planet) this.planet.dispose();
-        if (this.enemyManager) this.enemyManager.dispose();
         if (this.controls) this.controls.dispose();
         this.renderer.dispose();
 

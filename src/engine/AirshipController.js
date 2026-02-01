@@ -1,5 +1,4 @@
 import * as THREE from 'three/webgpu';
-import { Anchor } from './Anchor.js';
 
 /**
  * AirshipController - Hovercraft-style movement controller in Vanilla Three.js
@@ -21,22 +20,7 @@ export class AirshipController {
         this.maxHeight = options.maxHeight || 20;
         this.verticalSpeed = options.verticalSpeed || 8;
 
-        // Chain/Lasso logic
-        this.chainLength = options.chainRestLength || 6;
-        this.chainMinLength = 2;
-        this.chainMaxLength = 12;
-        this.reelSpeed = 8;
-        this.extendSpeed = 15;
 
-        // Mouse attraction
-        this.mouseTarget = new THREE.Vector3();
-        this.enableMouseAim = true;
-        this.mouseAttractStrength = 12;
-
-        // Anchor instance
-        this.anchor = new Anchor(player.scene, player, {
-            chainLength: this.chainLength
-        });
 
         // State tracking
         this.currentVelocity = new THREE.Vector3();
@@ -77,13 +61,9 @@ export class AirshipController {
             case 'ShiftLeft': this.keys.sprint = isPressed; break;
             case 'Space': this.keys.ascend = isPressed; break;
             case 'KeyC': this.keys.descend = isPressed; break;
-            case 'KeyF': this.keys.lasso = isPressed; break; // Lasso key
         }
     }
 
-    updateMouse(target) {
-        this.mouseTarget.copy(target);
-    }
 
     update(delta) {
         if (!this.player) return;
@@ -120,22 +100,6 @@ export class AirshipController {
         this.player.position.y += verticalVel * delta;
         this.player.position.z += this.currentVelocity.z * delta;
 
-        // === C. LASSO LOGIC ===
-        if (this.keys.lasso) {
-            this.chainLength = Math.max(this.chainLength - this.reelSpeed * delta, this.chainMinLength);
-        } else {
-            if (this.chainLength < 6) { // 6 is rest length
-                this.chainLength = Math.min(this.chainLength + this.extendSpeed * delta, 6);
-            }
-        }
-
-        // === D. ANCHOR PHYSICS ===
-        if (this.anchor) {
-            if (this.enableMouseAim) {
-                this.anchor.applyAttraction(this.mouseTarget, this.mouseAttractStrength, delta);
-            }
-            this.anchor.update(delta, this.chainLength);
-        }
 
         // === E. VISUAL BOBBING ===
         this.bobTime += delta;
