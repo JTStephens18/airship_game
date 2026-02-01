@@ -3,7 +3,8 @@ import {
     uniform, float, int, vec3, vec2, vec4,
     storage, instanceIndex, vertexIndex, array, Fn,
     positionWorld, max, smoothstep, color, mix, Loop,
-    positionLocal, positionGeometry, texture
+    positionLocal, positionGeometry, texture,
+    screenUV, screenSize
 } from 'three/tsl';
 import { cnoise } from './components/perlin.js';
 
@@ -102,6 +103,20 @@ export class Planet {
     }
 
     setupMaterials() {
+
+        const bayerMatrixNodes = [
+            0.0 / 64.0, 48.0 / 64.0, 12.0 / 64.0, 60.0 / 64.0, 3.0 / 64.0, 51.0 / 64.0, 15.0 / 64.0, 63.0 / 64.0,
+            32.0 / 64.0, 16.0 / 64.0, 44.0 / 64.0, 28.0 / 64.0, 35.0 / 64.0, 19.0 / 64.0, 47.0 / 64.0, 31.0 / 64.0,
+            8.0 / 64.0, 56.0 / 64.0, 4.0 / 64.0, 52.0 / 64.0, 11.0 / 64.0, 59.0 / 64.0, 7.0 / 64.0, 55.0 / 64.0,
+            40.0 / 64.0, 24.0 / 64.0, 36.0 / 64.0, 20.0 / 64.0, 43.0 / 64.0, 27.0 / 64.0, 39.0 / 64.0, 23.0 / 64.0,
+            2.0 / 64.0, 50.0 / 64.0, 14.0 / 64.0, 62.0 / 64.0, 1.0 / 64.0, 49.0 / 64.0, 13.0 / 64.0, 61.0 / 64.0,
+            34.0 / 64.0, 18.0 / 64.0, 46.0 / 64.0, 30.0 / 64.0, 33.0 / 64.0, 17.0 / 64.0, 45.0 / 64.0, 29.0 / 64.0,
+            10.0 / 64.0, 58.0 / 64.0, 6.0 / 64.0, 54.0 / 64.0, 9.0 / 64.0, 57.0 / 64.0, 5.0 / 64.0, 53.0 / 64.0,
+            42.0 / 64.0, 26.0 / 64.0, 38.0 / 64.0, 22.0 / 64.0, 41.0 / 64.0, 25.0 / 64.0, 37.0 / 64.0, 21.0 / 64.0
+        ].map(v => float(v));
+
+        const bayerArray = array(bayerMatrixNodes);
+
         const fbm = Fn(([pos, octaves, frequency, amplitude, lacunarity, persistence]) => {
             const p = vec3(pos).toVar();
             const total = float(0.0).toVar();
@@ -161,6 +176,27 @@ export class Planet {
             return positionBuffer.element(vertexIndex);
         })();
 
+        this.applyRetroEffects = Fn(([inputColor, colorNum]) => {
+            const uv = screenUV;
+            const col = inputColor.rgb.toVar();
+
+            const pixelPos = uv.mul(screenSize).toVar();
+
+            const x = int(pixelPos.x).mod(8);
+            const y = int(pixelPos.y).mod(8);
+            const index = y.mul(8).add(x);
+
+            const threshold = bayerArray.element(index);
+
+            // 1. Dithering Logic
+            const ditherStrength = float(0.6);
+            col.addAssign(threshold.sub(0.8).mul(ditherStrength));
+            const levels = colorNum.sub(1.0);
+            col.assign(col.mul(levels).add(0.5).floor().div(levels));
+
+            return col;
+        });
+
         this.material.colorNode = Fn(() => {
             const pos = positionWorld;
             const dist = pos.xz.sub(this.uniforms.uCameraPosition.xz).length();
@@ -186,7 +222,11 @@ export class Planet {
             const fogFactor = smoothstep(this.uniforms.uFogNear, this.uniforms.uFogFar, dist);
             finalColor = mix(finalColor, this.uniforms.uFogColor, fogFactor);
 
-            return vec4(finalColor.rgb, 1.0);
+            const colorNum = float(16.0);
+            const retroColor = this.applyRetroEffects(finalColor, colorNum);
+
+            // return vec4(finalColor.rgb, 1.0);
+            return vec4(retroColor.rgb, 1.0);
         })();
 
         this.material.side = THREE.DoubleSide;

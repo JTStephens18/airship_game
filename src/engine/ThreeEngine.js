@@ -44,6 +44,7 @@ export class ThreeEngine {
         this.player.position.set(0, 10, 0); // Start high
 
         this.controller = new AirshipController(this.player, this.camera, {
+            camOffset: [0, 3, 7], // Moved camera closer from [0, 5, 10]
             onPositionUpdate: (pos) => {
                 // Keep the planet centered on the player (optional logic)
             }
