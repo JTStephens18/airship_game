@@ -233,7 +233,7 @@ export class Planet {
             const fogFactor = smoothstep(this.uniforms.uFogNear, this.uniforms.uFogFar, dist);
             finalColor = mix(finalColor, this.uniforms.uFogColor, fogFactor);
 
-            const colorNum = float(16.0);
+            const colorNum = float(4.0);
             const retroColor = this.applyRetroEffects(finalColor, colorNum).toVar();
 
             // === SHADOW CALCULATION ===
