@@ -42,8 +42,8 @@ export class Planet {
             uCameraPosition: uniform(new THREE.Vector3()),
 
             // Material transitions
-            uSandStart: uniform(-1.0),
-            uSandEnd: uniform(1.5),
+            uSandStart: uniform(0.5),
+            uSandEnd: uniform(2.7),
             uGrassStart: uniform(1.5),
             uGrassEnd: uniform(3.0),
             uHorizonDist: uniform(116),
@@ -77,7 +77,7 @@ export class Planet {
 
         this.textures = {
             water: loader.load(`${assetPath}water3.png`),
-            sand: loader.load(`${assetPath}dirt.png`),
+            sand: loader.load(`${assetPath}sand1.png`),
             grass: loader.load(`${assetPath}grass1.png`),
             rock: loader.load(`${assetPath}rock.jpg`),
             airshipShadow: loader.load(`${assetPath}airship_shadow_crop.png`),

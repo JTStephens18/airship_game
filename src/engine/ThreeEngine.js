@@ -19,7 +19,7 @@ export class ThreeEngine {
 
         // Skybox loading
         const loader = new THREE.TextureLoader();
-        const skyTex = loader.load('/src/assets/sky2.png');
+        const skyTex = loader.load('/src/assets/sky10.png');
         skyTex.mapping = THREE.EquirectangularReflectionMapping;
         skyTex.colorSpace = THREE.SRGBColorSpace;
         this.scene.background = skyTex;
